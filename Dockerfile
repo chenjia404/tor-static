@@ -18,6 +18,7 @@ RUN apt-get update \
         git \
         libtool \
         perl \
+        po4a \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
