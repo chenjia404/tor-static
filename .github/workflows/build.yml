@@ -136,6 +136,7 @@ jobs:
           install: >-
             base-devel
             git
+            gettext-devel
             mercurial
             libtool
             perl
@@ -159,6 +160,7 @@ jobs:
           which make
           which perl
           which git
+          test -f /usr/share/gettext/archive.dir.tar.xz
           test -x "${GO_BIN}"
           "${GO_BIN}" version
 
