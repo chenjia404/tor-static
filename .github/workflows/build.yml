@@ -144,11 +144,13 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="/mingw64/bin:$PATH"
-          go run build.go -verbose build-all
-          go run build.go package-libs
+          GO_BIN="$(cygpath "${GOROOT}")/bin/go.exe"
+          "${GO_BIN}" version
+          "${GO_BIN}" run build.go -verbose build-all
+          "${GO_BIN}" run build.go package-libs
           mkdir -p dist/windows/amd64
           cp libs.zip dist/windows/amd64/tor-static-windows-amd64.zip
-          go run build.go show-libs > dist/windows/amd64/show-libs.txt
+          "${GO_BIN}" run build.go show-libs > dist/windows/amd64/show-libs.txt
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v6
