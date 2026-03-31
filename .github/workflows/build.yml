@@ -136,7 +136,10 @@ jobs:
           install: >-
             base-devel
             git
+            mercurial
             libtool
+            perl
+            subversion
             automake
             autoconf
             automake-wrapper
@@ -144,6 +147,20 @@ jobs:
             mingw-w64-i686-toolchain
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-toolchain
+
+      - name: Validate Windows build environment
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export PATH="/mingw64/bin:$PATH"
+          GO_BIN="$(cygpath "${WINDOWS_GO_BIN}")"
+          uname -a
+          which sh
+          which make
+          which perl
+          which git
+          test -x "${GO_BIN}"
+          "${GO_BIN}" version
 
       - name: Build Windows artifacts
         shell: msys2 {0}
