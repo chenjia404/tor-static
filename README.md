@@ -9,7 +9,7 @@ submodules are:
 - [Libevent](https://github.com/libevent/libevent) - Checked out at tag `release-2.1.12-stable`
 - [zlib](https://github.com/madler/zlib) - Checked out at tag `v1.3.1`
 - [XZ Utils](https://git.tukaani.org/?p=xz.git) - Checked out at tag `v5.6.2`
-- [Tor](https://github.com/torproject/tor) - Checked out at tag `tor-0.4.8.12`
+- [Tor](https://github.com/torproject/tor) - Checked out at tag `tor-0.4.8.23`
 
 Many many bugs and quirks were hit while deriving these steps. Also many other repos, mailing lists, etc were leveraged
 to get some of the pieces right. They are not listed here for brevity reasons.
@@ -111,6 +111,34 @@ Build Linux arm64:
     docker compose run --rm linux-arm64
 
 Artifacts are written to `./dist/linux/<arch>`.
+
+### Building Windows artifacts with Docker on a Windows host
+
+This repository can also build the Windows static package inside a Windows container. This requires a Windows host that
+can run Windows containers.
+
+Requirements:
+
+- Docker Desktop in Windows container mode
+- Windows 10/11 Pro or Enterprise
+- A repository checkout with recursive submodules
+
+Build the Windows toolchain image:
+
+    docker build -f Dockerfile.windows -t tor-static-windows-builder .
+
+Run the Windows build:
+
+    docker run --rm `
+      -v ${PWD}:C:\src:ro `
+      -v ${PWD}\dist\windows:C:\out `
+      tor-static-windows-builder
+
+Artifacts are written to `.\dist\windows`:
+
+- `tor-static-windows-amd64.zip`
+- `tor-static-windows-amd64.tar.gz`
+- `show-libs.txt`
 
 ### GitHub Actions
 

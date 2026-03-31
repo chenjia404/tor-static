@@ -1,0 +1,41 @@
+# escape=`
+
+ARG WINDOWS_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2022
+FROM ${WINDOWS_IMAGE}
+
+SHELL ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+
+ARG GO_VERSION=1.26.1
+ARG MSYS2_INSTALLER_URL=https://repo.msys2.org/distrib/x86_64/msys2-base-x86_64-latest.sfx.exe
+
+ENV MSYS2_ROOT=C:\msys64 `
+    GOROOT=C:\go `
+    GO_VERSION=${GO_VERSION} `
+    MSYS2_INSTALLER_URL=${MSYS2_INSTALLER_URL} `
+    MSYSTEM=MINGW64
+
+# Install MSYS2 and Go once into the image so later builds only need to mount the repository and run the script.
+RUN $ErrorActionPreference = 'Stop'; `
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; `
+    Invoke-WebRequest -Uri $env:MSYS2_INSTALLER_URL -OutFile C:\msys2-base-x86_64-latest.sfx.exe; `
+    Start-Process -FilePath C:\msys2-base-x86_64-latest.sfx.exe -ArgumentList '-y', '-oC:\' -Wait; `
+    Remove-Item C:\msys2-base-x86_64-latest.sfx.exe -Force; `
+    Invoke-WebRequest -Uri ('https://go.dev/dl/go' + $env:GO_VERSION + '.windows-amd64.zip') -OutFile C:\go.zip; `
+    Expand-Archive -Path C:\go.zip -DestinationPath C:\; `
+    Remove-Item C:\go.zip -Force
+
+# Refresh the MSYS2 package database and install the full Windows build toolchain used by build.go.
+RUN $ErrorActionPreference = 'Stop'; `
+    $bash = 'C:\msys64\usr\bin\bash.exe'; `
+    & $bash -lc 'pacman -Syu --noconfirm'; `
+    & $bash -lc 'pacman -Su --noconfirm'; `
+    & $bash -lc 'pacman -S --noconfirm --needed base-devel git gettext-devel mercurial libtool perl po4a subversion automake autoconf automake-wrapper mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain'; `
+    Remove-Item -Recurse -Force C:\msys64\var\cache\pacman\pkg\* -ErrorAction SilentlyContinue
+
+ENV PATH=C:\go\bin;C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\Windows\System32;C:\Windows
+
+WORKDIR C:\workspace
+
+COPY scripts/build-in-windows-container.ps1 C:\scripts\build-in-windows-container.ps1
+
+ENTRYPOINT ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\scripts\\build-in-windows-container.ps1"]
