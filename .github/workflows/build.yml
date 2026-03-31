@@ -140,6 +140,7 @@ jobs:
             mercurial
             libtool
             perl
+            po4a
             subversion
             automake
             autoconf
@@ -160,6 +161,7 @@ jobs:
           which make
           which perl
           which git
+          which po4a
           test -f /usr/share/gettext/archive.dir.tar.xz
           test -x "${GO_BIN}"
           "${GO_BIN}" version

@@ -58,7 +58,7 @@ Terminate and restart the shell if asked. Rerun this command as many times as ne
 up to date. Then in the same mingw-64 shell, run:
 
     pacman -Sy --needed base-devel mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain \
-                        git subversion mercurial libtool gettext-devel automake autoconf automake-wrapper \
+                        git subversion mercurial libtool gettext-devel po4a automake autoconf automake-wrapper \
                         mingw-w64-i686-cmake mingw-w64-x86_64-cmake
 
 This will install all the tools needed for building and will take a while. Once complete, MinGW is now setup to build
