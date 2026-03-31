@@ -112,6 +112,34 @@ Build Linux arm64:
 
 Artifacts are written to `./dist/linux/<arch>`.
 
+### Building Windows artifacts with Docker on a Windows host
+
+This repository can also build the Windows static package inside a Windows container. This requires a Windows host that
+can run Windows containers.
+
+Requirements:
+
+- Docker Desktop in Windows container mode
+- Windows 10/11 Pro or Enterprise
+- A repository checkout with recursive submodules
+
+Build the Windows toolchain image:
+
+    docker build -f Dockerfile.windows -t tor-static-windows-builder .
+
+Run the Windows build:
+
+    docker run --rm `
+      -v ${PWD}:C:\src:ro `
+      -v ${PWD}\dist\windows:C:\out `
+      tor-static-windows-builder
+
+Artifacts are written to `.\dist\windows`:
+
+- `tor-static-windows-amd64.zip`
+- `tor-static-windows-amd64.tar.gz`
+- `show-libs.txt`
+
 ### GitHub Actions
 
 A GitHub Actions workflow is included for CI builds across:
