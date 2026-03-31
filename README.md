@@ -30,6 +30,7 @@ Need:
 - Normal build tools (e.g. `sudo apt-get install build-essential`)
 - Libtool (e.g. `sudo apt-get install libtool`)
 - autopoint (e.g. `sudo apt-get install autopoint`)
+- po4a (e.g. `sudo apt-get install po4a`)
 
 #### macOS
 
