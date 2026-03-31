@@ -1,0 +1,210 @@
+name: build
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - amd64
+          - arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux artifacts in Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: artifact
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=local,dest=./dist/linux/${{ matrix.arch }}
+          provenance: false
+          sbom: false
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: tor-static-linux-${{ matrix.arch }}
+          path: dist/linux/${{ matrix.arch }}/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # GitHub-hosted macOS Intel and Apple Silicon runners are split by label.
+          - name: amd64
+            runner: macos-15-intel
+            arch: amd64
+          - name: arm64
+            runner: macos-latest
+            arch: arm64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: Install build dependencies
+        run: brew update && brew install autoconf automake gettext libtool po4a
+
+      - name: Build macOS artifacts
+        run: |
+          set -euo pipefail
+          AUTOPOINT_PATH="$(brew --prefix gettext)/bin"
+          go run build.go -autopoint-path "${AUTOPOINT_PATH}" -verbose build-all
+          go run build.go package-libs
+          mkdir -p "dist/darwin/${{ matrix.arch }}"
+          cp libs.tar.gz "dist/darwin/${{ matrix.arch }}/tor-static-darwin-${{ matrix.arch }}.tar.gz"
+          go run build.go show-libs > "dist/darwin/${{ matrix.arch }}/show-libs.txt"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: tor-static-darwin-${{ matrix.arch }}
+          path: dist/darwin/${{ matrix.arch }}/*
+          if-no-files-found: error
+
+  windows:
+    name: Windows (amd64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Force LF checkouts for MSYS2 tools
+        run: git config --global core.autocrlf input
+
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          check-latest: true
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            libtool
+            automake
+            autoconf
+            automake-wrapper
+            mingw-w64-i686-cmake
+            mingw-w64-i686-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-toolchain
+
+      - name: Build Windows artifacts
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export PATH="/mingw64/bin:$PATH"
+          go run build.go -verbose build-all
+          go run build.go package-libs
+          mkdir -p dist/windows/amd64
+          cp libs.zip dist/windows/amd64/tor-static-windows-amd64.zip
+          go run build.go show-libs > dist/windows/amd64/show-libs.txt
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: tor-static-windows-amd64
+          path: dist/windows/amd64/*
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - linux
+      - macos
+      - windows
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tor-static-*
+          path: dist/release
+          merge-multiple: true
+
+      - name: Show release payload
+        run: find dist/release -maxdepth 1 -type f | sort
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+          assets=(dist/release/*)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets were downloaded" >&2
+            exit 1
+          fi
+
+          # Hyphenated tags such as v1.2.3-rc1 are treated as prereleases.
+          prerelease_args=()
+          if [[ "${TAG_NAME}" == *-* ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "${assets[@]}" --clobber
+          else
+            gh release create "${TAG_NAME}" "${assets[@]}" \
+              --verify-tag \
+              --generate-notes \
+              "${prerelease_args[@]}"
+          fi

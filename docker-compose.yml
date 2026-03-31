@@ -1,0 +1,38 @@
+services:
+  linux-amd64:
+    # Compose is used here as a convenient local wrapper around the Linux build container.
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: toolchain
+      platforms:
+        - linux/amd64
+    environment:
+      TARGETARCH: amd64
+      TARGETOS: linux
+      OUTPUT_DIR: /out/linux/amd64
+      SOURCE_DIR: /src
+    volumes:
+      - .:/src:ro
+      - ./dist:/out
+    command: ["bash", "/src/scripts/build-in-container.sh"]
+
+  linux-arm64:
+    # Running this service on a non-arm64 host requires Docker Desktop or BuildKit QEMU emulation.
+    platform: linux/arm64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: toolchain
+      platforms:
+        - linux/arm64
+    environment:
+      TARGETARCH: arm64
+      TARGETOS: linux
+      OUTPUT_DIR: /out/linux/arm64
+      SOURCE_DIR: /src
+    volumes:
+      - .:/src:ro
+      - ./dist:/out
+    command: ["bash", "/src/scripts/build-in-container.sh"]

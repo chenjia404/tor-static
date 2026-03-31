@@ -1,0 +1,6 @@
+.git
+.github
+dist
+libs.tar.gz
+libs.zip
+**/dist

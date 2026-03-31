@@ -73,6 +73,57 @@ This will take a long time. Pieces can be built individually by changing the com
 `build-<folder>`. To clean, run either `clean-all` or `clean-<folder>`. To see the output of all the commands as they
 are being run, add `-verbose` before the command.
 
+### Building with Docker
+
+Docker support is aimed at Linux builds. The container runs the native Linux toolchain for the target architecture, so
+it is a good fit for `linux/amd64` and `linux/arm64`.
+
+Before using Docker, make sure the repository has been cloned with recursive submodules:
+
+    git submodule update --init --recursive
+
+Build Linux amd64:
+
+    docker buildx build --platform linux/amd64 --target artifact --output type=local,dest=./dist/linux/amd64 .
+
+Build Linux arm64:
+
+    docker buildx build --platform linux/arm64 --target artifact --output type=local,dest=./dist/linux/arm64 .
+
+Each output directory will contain:
+
+- `tor-static-linux-<arch>.tar.gz`
+- `tor-static-linux-<arch>.zip`
+- `show-libs.txt`
+
+### Building with docker-compose
+
+`docker-compose` is provided as a convenient local wrapper around the Linux build container. It does not replace native
+macOS or Windows builds, but it makes repeatable Linux builds easier.
+
+Build Linux amd64:
+
+    docker compose run --rm linux-amd64
+
+Build Linux arm64:
+
+    docker compose run --rm linux-arm64
+
+Artifacts are written to `./dist/linux/<arch>`.
+
+### GitHub Actions
+
+A GitHub Actions workflow is included for CI builds across:
+
+- Linux amd64 via Docker
+- Linux arm64 via Docker + QEMU
+- macOS amd64 via native GitHub-hosted runner
+- macOS arm64 via native GitHub-hosted runner
+- Windows amd64 via MSYS2/MinGW
+
+The workflow uploads per-platform artifacts for every build. When a tag matching `v*` is pushed, it also creates or
+updates the matching GitHub Release and uploads the packaged artifacts.
+
 ## Using
 
 Once the libs have been compiled, they can be used to link with your program. Due to recent refactorings within the Tor
