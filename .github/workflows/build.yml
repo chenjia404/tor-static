@@ -212,6 +212,7 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -229,10 +230,11 @@ jobs:
             prerelease_args+=(--prerelease)
           fi
 
-          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
-            gh release upload "${TAG_NAME}" "${assets[@]}" --clobber
+          if gh release view "${TAG_NAME}" --repo "${GH_REPO}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "${assets[@]}" --repo "${GH_REPO}" --clobber
           else
             gh release create "${TAG_NAME}" "${assets[@]}" \
+              --repo "${GH_REPO}" \
               --verify-tag \
               --generate-notes \
               "${prerelease_args[@]}"
